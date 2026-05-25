@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+  <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+  <meta name="referrer" content="no-referrer" />
+  <link rel="icon" href="doqro.png" type="image/png" />
+  <link rel="apple-touch-icon" href="doqro.png" />
+  <title>beekeeb Toucan</title>
+  <style>
+    :root {
+      --u: 60px;
+      --c-base: #e8eaed;
+      --c-mod: #cfd4dc;
+      --c-thumb: #c5ccd8;
+      --c-nav: #b8c0d0;
+      --c-wide: #dde1e8;
+      --c-trns: #a8b4c4;
+      --c-no: #6b7280;
+      --c-dual: #cfe8fc;
+      --c-macro: #f6d8b4;
+      --c-bt: #d6c3ee;
+      --c-bootdanger: #f3b4b4;
+    }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #1a1d23;
+      color: #e8eaed;
+      padding: 1.5rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 1.35rem; font-weight: 600; margin-bottom: 0.35rem; }
+    h2 { font-size: 1rem; margin: 1.25rem 0 0.5rem; color: #c8d0dc; }
+    p.meta { font-size: 0.88rem; color: #fff; margin: 0 0 1rem; line-height: 1.68; font-weight: 400; opacity: 0.9; }
+    code { background: #2a3038; padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.85em; }
+
+    /* ---- コントロール（チェックボックス・配列切替・レイヤータブ） ---- */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.85rem 1.1rem;
+      margin-bottom: 0.95rem;
+      font-size: 0.88rem;
+      color: #fff;
+    }
+    .controls label { cursor: pointer; user-select: none; }
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.75rem;
+      margin: 0 0 0.95rem 0;
+      font-size: 0.88rem;
+      color: #fff;
+    }
+    .legend-row label { cursor: pointer; user-select: none; }
+    .legend-group-label { margin-right: 0.1rem; white-space: nowrap; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 0.95rem;
+    }
+    .toolbar button {
+      background: #2d3542;
+      border: 1px solid #4a5568;
+      color: #fff;
+      padding: 0.5rem 0.85rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.88rem;
+    }
+    .toolbar button:hover { background: #3d4654; }
+    .toolbar button.active {
+      background: #3b82f6;
+      border-color: #60a5fa;
+    }
+    /* レイヤータブ: 1行目 Ln（最小） / 2行目 短名（中） */
+    .toolbar button.layer-tab {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.18;
+      gap: 0.06rem;
+      min-width: 3.6rem;
+      text-align: center;
+    }
+    .toolbar button.layer-tab .layer-tab__num {
+      font-size: 0.62rem;
+      font-weight: 500;
+      color: #fff;
+      letter-spacing: 0.02em;
+    }
+    .toolbar button.layer-tab .layer-tab__name {
+      font-size: 0.76rem;
+      font-weight: 400;
+      color: #fff;
+    }
+    .layer-title { font-size: 1.05rem; margin-bottom: 0.78rem; color: #fff; line-height: 1.4; }
+    .layer-desc { font-size: 0.85rem; color: #c8d0dc; margin: 0 0 0.95rem 0; line-height: 1.55; }
+
+    /* ---- キーボード描画領域（絶対座標方式） ---- */
+    .kb-wrap {
+      position: relative;
+      overflow-x: auto;
+      padding-bottom: 0.35rem;
+      margin-bottom: 0.25rem;
+    }
+    /* 絶対座標でキーを配置するための土台。toucan.json の x/y を u 倍率で展開 */
+    .kb {
+      position: relative;
+      /* width/height はレンダリング時に JS で設定（最大 x/y に依存） */
+      min-width: max-content;
+    }
+    .kb-wrap.kb-wrap--hide-slots .slot-badge { display: none; }
+    .kb-wrap.kb-wrap--hide-codes .code-badge { display: none; }
+
+    /* キー本体 */
+    .key {
+      position: absolute;
+      box-sizing: border-box;
+      width: calc(var(--u) * 0.94);
+      height: calc(var(--u) * 0.94);
+      border: 1px solid #3d4450;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 0.74rem;
+      line-height: 1.2;
+      padding: 13px 4px 5px;
+      background: var(--c-base);
+      color: #1a1d23;
+      overflow: hidden;
+      word-break: break-word;
+    }
+    .key.dual { background: var(--c-dual); }
+    .key.mod    { background: var(--c-mod);     font-size: 0.68rem; }
+    .key.thumb  { background: var(--c-thumb);   font-size: 0.68rem; }
+    .key.nav    { background: var(--c-nav);     font-size: 0.68rem; }
+    .key.wide   { background: var(--c-wide);    font-size: 0.66rem; }
+    .key.trns   { background: var(--c-trns);    color: #1e293b;     font-size: 0.7rem; }
+    .key.no     { background: var(--c-no);      color: #e5e7eb;     font-size: 0.7rem; }
+    .key.macro  { background: var(--c-macro);   font-size: 0.7rem;  font-weight: 600; }
+    .key.bt     { background: var(--c-bt);      font-size: 0.7rem; }
+    .key.boot   { background: var(--c-bootdanger); font-size: 0.68rem; font-weight: 600; }
+    .key.danger { background: var(--c-bootdanger); font-size: 0.68rem; font-weight: 600; }
+
+    .slot-badge {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      font-size: 10px;
+      font-family: ui-monospace, monospace;
+      color: #475569;
+      font-weight: 600;
+      line-height: 1;
+    }
+    .code-badge {
+      position: absolute;
+      top: 2px;
+      right: 4px;
+      max-width: calc(100% - 28px);
+      font-size: 9px;
+      font-family: ui-monospace, monospace;
+      color: #64748b;
+      font-weight: 600;
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: right;
+    }
+    /* スロット番号を隠して keycode のみ見たいとき、長文 keycode を改行表示する */
+    .kb-wrap.kb-wrap--hide-slots:not(.kb-wrap--hide-codes) .code-badge {
+      left: 4px;
+      right: 4px;
+      max-width: calc(100% - 8px);
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      text-overflow: clip;
+      line-height: 1.08;
+      text-align: left;
+    }
+
+    /* ---- 一覧表示（L0-L4 同時表示）モード ---- */
+    .is-hidden { display: none !important; }
+
+    /* 一覧モードでは少し大きめのキーで 5 ラベルが見やすいよう調整 */
+    .kb-wrap.kb-wrap--integrated {
+      --u: 64px;
+    }
+    /* 一覧モードのキーは色分類を無効化して均一なグレーに統一
+       （5 レイヤー分の情報密度が高いため、背景色で意味を伝えないようにする） */
+    .key.integrated-key {
+      background: #e6e8ec;
+      color: #10151d;
+      border: 1px solid #5b6472;
+      padding: 3px;
+      font-size: 0.7rem;
+    }
+    .integrated-cell {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      line-height: 1.05;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      overflow: hidden;
+    }
+    .integrated-cell > span {
+      position: absolute;
+      max-width: 49%;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      letter-spacing: 0;
+      font-weight: 600;
+      font-size: 0.55rem;
+    }
+    /* アクティブレイヤー（layer-tabs で選択中）の値を赤で強調表示
+       L0 BASE はデフォルト位置なので強調しない（QMK 慣例に揃える） */
+    .integrated-cell > span.is-active-layer {
+      color: #dc2626 !important;
+      font-weight: 900;
+    }
+    /* 中央: L0 BASE（最も基準となるレイヤーを中央に） */
+    .integrated-cell .l0 {
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 68%;
+      font-size: 0.7rem;
+      font-weight: 400;
+      color: #0f172a;
+    }
+    /* 右上: L2 SYM */
+    .integrated-cell .l1 {
+      right: 2px;
+      top: 2px;
+      text-align: right;
+      color: #213047;
+    }
+    /* 右下: L3 ADJ */
+    .integrated-cell .l2 {
+      right: 2px;
+      bottom: 2px;
+      text-align: right;
+      color: #25411f;
+    }
+    /* 左下: L4 ADJ_NAV */
+    .integrated-cell .l3 {
+      left: 2px;
+      bottom: 2px;
+      text-align: left;
+      color: #55261a;
+    }
+    /* 左上: L1 NAV */
+    .integrated-cell .l4 {
+      left: 2px;
+      top: 2px;
+      text-align: left;
+      color: #3a214f;
+    }
+
+    /* ---- ドキュメント領域 ---- */
+    details.doc {
+      margin-top: 1.45rem;
+      background: #2a2f36;
+      border: 1px solid #3d4450;
+      border-radius: 8px;
+      padding: 0.65rem 1rem 1.15rem;
+    }
+    details.doc > summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: #fff;
+      padding: 0.45rem 0;
+      line-height: 1.4;
+    }
+    details.doc table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      margin: 0.5rem 0;
+    }
+    details.doc th, details.doc td {
+      border: 1px solid #3d4450;
+      padding: 0.4rem 0.55rem;
+      text-align: left;
+      line-height: 1.45;
+      vertical-align: top;
+    }
+    details.doc th { background: #343a44; color: #fff; font-weight: 700; }
+    details.doc ul { margin: 0.42rem 0 0.55rem; padding-left: 1.35rem; font-size: 0.84rem; line-height: 1.55; color: #fff; font-weight: 400; opacity: 0.92; }
+    details.doc li { margin: 0.1rem 0; }
+    details.doc p { font-size: 0.84rem; line-height: 1.55; color: #fff; margin: 0.42rem 0 0.56rem; font-weight: 400; opacity: 0.92; }
+    details.doc h2 { margin: 1rem 0 0.55rem; line-height: 1.35; }
+    details.doc h2:not(:first-of-type) {
+      margin-top: 2.2rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid #3d4450;
+    }
+    footer.tech {
+      margin-top: 1.2rem;
+      font-size: 0.74rem;
+      color: #fff;
+      line-height: 1.7;
+      opacity: 0.78;
+    }
+  </style>
+</head>
+<body>
+  <section class="kb-viz-region" aria-label="キーマップ可視化">
+    <h1>beekeeb Toucan</h1>
+    <p class="meta">ソース: <code>config/toucan.keymap</code>（<code>bindings = &lt;...&gt;</code> の並び順）/ 物理配置: <code>config/toucan.json</code></p>
+
+    <div class="controls">
+      <label><input type="checkbox" id="toggle-slots" checked /> スロット番号（#0〜#41）を表示</label>
+      <label><input type="checkbox" id="toggle-codes" checked /> バインディング原文（<code>&amp;kp ...</code>）を表示</label>
+    </div>
+
+    <div class="legend-row">
+      <div role="radiogroup" aria-label="ホスト配列（US / JIS）">
+        <span class="legend-group-label">ホスト配列：</span>
+        <label><input type="radio" name="legend" id="legend-jis" value="jis" checked /> JIS</label>
+        <label><input type="radio" name="legend" id="legend-us" value="us" /> US</label>
+      </div>
+    </div>
+
+    <div class="toolbar" id="view-modes" role="tablist" aria-label="表示モード選択">
+      <button type="button" class="view-mode-tab active" id="view-integrated" role="tab" aria-selected="true">一覧表示（L0-L4）</button>
+      <button type="button" class="view-mode-tab" id="view-single" role="tab" aria-selected="false">単一レイヤー表示</button>
+    </div>
+
+    <div class="toolbar" id="layer-tabs" role="tablist" aria-label="レイヤー選択"></div>
+    <div class="layer-title" id="layer-desc"></div>
+    <p class="layer-desc" id="layer-note"></p>
+
+    <div class="kb-wrap" id="kb-wrap">
+      <div class="kb" id="kb" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <details class="doc" open>
+    <summary>表示モード・凡例・レイヤー概要・カスタム behavior・マクロ・コンボ・修正依頼のしかた</summary>
+
+    <h2>表示モード</h2>
+    <p>キーマップ上部の「一覧表示（L0-L4）」「単一レイヤー表示」のタブで切り替えます。</p>
+    <table>
+      <tr><th>モード</th><th>表示内容</th><th>用途</th></tr>
+      <tr><td><strong>一覧表示</strong>（デフォルト）</td><td>L0〜L4 の 5 レイヤー（BASE / NAV / SYM / ADJ / ADJ_NAV）を 1 セルに同時表示。各セル内の位置: <strong>中央＝L0 BASE</strong> / 左上＝L1 NAV / 右上＝L2 SYM / 右下＝L3 ADJ / 左下＝L4 ADJ_NAV</td><td>日常使用するレイヤー間の関係（同じ物理キーが何になるか）を俯瞰したいとき</td></tr>
+      <tr><td>単一レイヤー表示</td><td>レイヤータブで選択した 1 レイヤーを通常表示。L0〜L9 の全 10 レイヤーが対象</td><td>1 レイヤーの詳細を確認したいとき、スロット番号やバインディング原文を見たいとき、L5〜L9（CTRL_NUM / GUI_NUM / ALT_NUM / BOOT / NAV_FAST）を確認したいとき</td></tr>
+    </table>
+    <p>一覧表示モード中にレイヤータブをクリックすると、そのレイヤーのラベルが赤強調されます（L0 BASE は中央のデフォルト位置のため強調されません）。修飾キーは記号で短縮表記されます: <code>^</code>=LCtrl / <code>+</code>=LShift / <code>#</code>=LGui / <code>!</code>=LAlt（例: <code>^Z</code> = LCtrl+Z）。</p>
+
+    <h2>凡例（表記の統一）</h2>
+    <table>
+      <tr><th>表示</th><th>意味</th></tr>
+      <tr><td><code>▽</code></td><td><code>&amp;trans</code>（下位レイヤーを透過）</td></tr>
+      <tr><td><code>·</code></td><td><code>&amp;none</code>（無割当）</td></tr>
+      <tr><td><code>LCtrl+Z</code> など</td><td>左 Ctrl とキーの同時押し（<code>&amp;kp LC(Z)</code>）</td></tr>
+      <tr><td><code>LShift+Z</code></td><td>左 Shift とキーの同時押し（<code>&amp;kp LS(Z)</code>）</td></tr>
+      <tr><td><code>LGui+Z</code></td><td>左 Gui (Win/Cmd) とキーの同時押し（<code>&amp;kp LG(Z)</code>）</td></tr>
+      <tr><td><code>LAlt+Z</code></td><td>左 Alt とキーの同時押し（<code>&amp;kp LA(Z)</code>）</td></tr>
+      <tr><td>水色の2行キー</td><td><strong>上段＝タップ</strong>、<strong>下段＝長押し</strong>（<code>&amp;lt</code>/<code>&amp;mt</code>/<code>&amp;lt_hold_tap</code>/<code>&amp;mt_hold_tap</code>）</td></tr>
+      <tr><td>橙色キー</td><td>マクロ（<code>&amp;macro_*</code>）</td></tr>
+      <tr><td>紫色キー</td><td>Bluetooth 操作（<code>&amp;bt ...</code>）</td></tr>
+      <tr><td>赤色キー</td><td>ブートローダ・リセット・電源系（<code>&amp;sys_reset</code>/<code>&amp;bootloader</code>/<code>&amp;soft_off</code>/<code>&amp;studio_unlock</code>）</td></tr>
+    </table>
+    <p>物理スロット: 上段 12 / 中段 12 / 下段 12 / 親指 6 = <strong>計 42 スロット（#0〜#41）</strong>。<code>toucan.keymap</code> の <code>bindings</code> 配列と一対一に対応します。</p>
+
+    <h2>レイヤー概要</h2>
+    <p>QMK 側 (olsk60) の L0〜L7 と一対一で揃えた構成（L8 BOOT と L9 NAV_FAST は ZMK 固有）。</p>
+    <table>
+      <tr><th>L</th><th>名前</th><th>用途</th><th>入り方</th></tr>
+      <tr><td>0</td><td><code>BASE</code></td><td>通常入力（ルートレイヤー）</td><td>初期状態</td></tr>
+      <tr><td>1</td><td><code>NAV</code></td><td>ナビゲーション・マウスクリック・スクロール・F15〜F18・ScrollBoost・メディア</td><td>左親指 <code>/</code>（<code>&amp;lt_hold_tap 1 SLASH</code>）長押し</td></tr>
+      <tr><td>2</td><td><code>SYM</code></td><td>記号・テンキー・括弧マクロ。本レイヤー中はグライドポイントが<strong>スクロール化</strong>される</td><td>右親指 Space（<code>&amp;lalt_space</code>）長押し</td></tr>
+      <tr><td>3</td><td><code>ADJ</code></td><td>カーソル移動・編集・F キー</td><td>右親指 変換 / 英数（<code>&amp;henkan_lt_adj</code>）長押し</td></tr>
+      <tr><td>4</td><td><code>ADJ_NAV</code></td><td>Ctrl 系拡張ショートカット・Shift+クリックなど</td><td>NAV と ADJ が同時アクティブになると <code>conditional_layers</code> が自動有効化。Path A／Path B の両方から到達可能（下記「ADJ_NAV 入場経路」参照）</td></tr>
+      <tr><td>5</td><td><code>CTRL_NUM</code></td><td>Ctrl+0〜9 のショートカット（タブ切替など）</td><td><code>]</code> 位置（<code>&amp;lt_hold_tap 5 RIGHT_BRACKET</code>）長押し</td></tr>
+      <tr><td>6</td><td><code>GUI_NUM</code></td><td>Gui(Win/Cmd)+0〜9 のショートカット</td><td><code>\</code> 位置（<code>&amp;lt_hold_tap 6 BACKSLASH</code>）長押し</td></tr>
+      <tr><td>7</td><td><code>ALT_NUM</code></td><td>Alt+0〜9 のショートカット</td><td><code>?</code> 位置（<code>&amp;lt_hold_tap 7 QUESTION</code>）長押し</td></tr>
+      <tr><td>8</td><td><code>BOOT</code></td><td>Bluetooth ペアリング・スリープ・リセット・ブートローダ（誤操作注意）</td><td>コンボ: スロット <code>#36 + #37 + #38</code> 同時押し</td></tr>
+      <tr><td>9</td><td><code>NAV_FAST</code></td><td>ホイールキー加速（QMK <code>SCROLL_BOOST_KEY</code> のホイール部分のみ近似移植）</td><td>NAV 中に左手 <code>B</code>（<code>&amp;mo 9</code>）を押下中のみ</td></tr>
+    </table>
+
+    <h2>カスタム behavior</h2>
+    <p><code>tapping-term-ms</code> は <code>TAPPING_TERM_MS = 240ms</code>（<code>toucan.keymap</code> 内で定数化）。タップ/ホールド判別はすべて <code>hold-preferred</code>。</p>
+    <table>
+      <tr><th>表記</th><th>意味</th></tr>
+      <tr><td><code>&amp;mt_hold_tap MOD KEY</code></td><td>タップ＝<code>KEY</code> 入力、ホールド＝<code>MOD</code> 単体押下（標準 <code>&amp;mt</code> の引数を <code>TAPPING_TERM_MS</code> で固定化した版）</td></tr>
+      <tr><td><code>&amp;lt_hold_tap N KEY</code></td><td>タップ＝<code>KEY</code> 入力、ホールド＝レイヤー <code>N</code> をモメンタリで有効化（標準 <code>&amp;lt</code> 相当）。<code>KEY</code> 部は単純なキーコード専用（<code>LC(ENTER)</code> のような修飾付きはタップ側で発火しないことがあるため、専用 hold-tap を別途用意する）</td></tr>
+      <tr><td><code>&amp;adj_nav_ctl_ent N 0</code></td><td>NAV(1) #40 専用 hold-tap。タップ＝<code>&amp;macro_ctl_enter</code>（= <code>LCtrl+Enter</code>）、ホールド＝レイヤー <code>N</code>（実体は <code>ADJ</code>）をモメンタリ有効化。NAV アクティブ中に長押しすると ADJ も同時アクティブになり、<code>conditional_layers</code> 経由で ADJ_NAV に入場する経路（Path B）として機能する。汎用 <code>&amp;lt_hold_tap</code> に <code>LC(ENTER)</code> を渡す方法は ZMK の hold-tap 解決で誤動作するケースがあったため、タップ側を 0 引数マクロに分離して安定化した版。QMK <code>ADJ_NAV_CTRL_ENT</code> 相当。第 2 引数はマクロ側で未使用のダミー（ZMK hold-tap は <code>#binding-cells = &lt;2&gt;</code> 固定）</td></tr>
+      <tr><td><code>&amp;to_nav_sft_ent N 0</code></td><td>ADJ(3) #38 専用 hold-tap。タップ＝<code>&amp;macro_sft_enter</code>（= <code>LShift+Enter</code>、QMK ADJ #42 相当）、ホールド＝レイヤー <code>N</code>（実体は <code>NAV</code>）をモメンタリ有効化。ADJ アクティブ中に長押しすると NAV も同時アクティブになり、<code>conditional_layers</code> 経由で ADJ_NAV に入場する経路（Path A）として機能する。短く押せば従来通り LShift+Enter を送る。第 2 引数はダミー</td></tr>
+      <tr><td><code>&amp;lalt_space</code></td><td>mod-morph。通常時は <code>&amp;lt_hold_tap 2 SPACE</code>（タップで Space、ホールドで SYM 有効化）、ただし<strong>LAlt 押下中にタップ</strong>すると <code>LAlt+Tab</code> を送る</td></tr>
+      <tr><td><code>&amp;henkan_lt_adj</code></td><td>mod-morph。通常時は <code>&amp;lt_hold_tap 3 LANGUAGE_1</code>（タップで かな、ホールドで ADJ 有効化）、<strong>LShift がアクティブな状態でタップ</strong>すると <code>LShift+F14</code> を送る。<br />QMK 側の <code>HENKAN_LT_ADJ</code> は「無変換 MT 由来の LShift のみ」かつ「pinky LShift 非押下」が条件だったが、ZMK では物理キーを区別できないため LShift アクティブ全般で F14 が発火する</td></tr>
+    </table>
+
+    <h2>マクロ（<code>macros</code> ノード）</h2>
+    <p>マクロは画面上では「動作の意味」で表示しています。実装の詳細は <code>toucan.keymap</code> 参照。</p>
+    <table>
+      <tr><th>表示ラベル</th><th>マクロ名</th><th>動作</th></tr>
+      <tr><td><code>( )</code></td><td><code>&amp;macro_parentheses</code></td><td><code>( )</code> を入力してカーソルを内側に戻す</td></tr>
+      <tr><td><code>[ ]</code></td><td><code>&amp;macro_square_brackets</code></td><td>JIS 環境向け <code>[ ]</code> を入力してカーソルを内側に戻す</td></tr>
+      <tr><td><code>{ }</code></td><td><code>&amp;macro_curly_brackets</code></td><td>JIS 環境向け <code>{ }</code> を入力してカーソルを内側に戻す</td></tr>
+      <tr><td><code>NewTabBack</code></td><td><code>&amp;macro_newtab_browser_back</code></td><td>「<code>LAlt → Right → LCtrl+Enter → Esc</code>」をウェイト 100ms 挟んで送出。新規タブでブラウザバック用</td></tr>
+      <tr><td><code>Ctrl+M1</code></td><td><code>&amp;macro_adj_lclick</code></td><td><code>LCtrl</code> 押下 → 左クリック → 解放（Ctrl+左クリック）</td></tr>
+      <tr><td><code>Shift+M1</code></td><td><code>&amp;macro_adj_sft_lclick</code></td><td><code>LShift</code> 押下 → 左クリック → 解放（Shift+左クリック）</td></tr>
+      <tr><td><code>Shift+M2</code></td><td><code>&amp;macro_adj_rclick</code></td><td><code>LShift</code> 押下 → 右クリック → 解放（Shift+右クリック）</td></tr>
+      <tr><td><code>LAlt+←</code></td><td><code>&amp;macro_alt_left</code></td><td><code>LAlt</code> 単独 down → <code>←</code> tap → <code>LAlt</code> 単独 up（4 レポート構成）。Windows の Alt 単独タップ誤判定によるメニューバー活性化を回避する</td></tr>
+      <tr><td><code>LAlt+→</code></td><td><code>&amp;macro_alt_right</code></td><td>同上、<code>→</code> 版</td></tr>
+      <tr><td><code>LAlt+Enter</code></td><td><code>&amp;macro_alt_enter</code></td><td>同上、<code>Enter</code> 版。NAV(1) #39 で使用</td></tr>
+      <tr><td><code>LCtrl+Enter</code></td><td><code>&amp;macro_ctl_enter</code></td><td><code>&amp;adj_nav_ctl_ent</code> のタップ側で内部利用。単独で <code>LCtrl+Enter</code> を送る</td></tr>
+      <tr><td><code>LShift+Enter</code></td><td><code>&amp;macro_sft_enter</code></td><td><code>&amp;to_nav_sft_ent</code> のタップ側で内部利用。単独で <code>LShift+Enter</code> を送る</td></tr>
+    </table>
+
+    <h2>コンボ</h2>
+    <ul>
+      <li>スロット <code>#36 + #37 + #38</code> 同時押し（親指列の左3つ）→ <code>&amp;mo 8</code> でレイヤー 8（BOOT）モメンタリ有効化</li>
+      <li>BASE 層に限り、スロット <code>#37 + #40</code>（無変換 + 変換）を 40ms 以内に同時押し → <code>&amp;kp ENTER</code>（QMK 側 COMBO 移植）</li>
+    </ul>
+
+    <h2>conditional_layers と ADJ_NAV 入場経路</h2>
+    <ul>
+      <li><code>NAV(1)</code> と <code>ADJ(3)</code> が同時アクティブのとき、自動的にレイヤー 4（<code>ADJ_NAV</code>）が有効化される</li>
+      <li>ADJ_NAV への入場経路は <strong>Path A / Path B の 2 経路、いずれも conditional_layers 経由で対称に発火する</strong>設計:</li>
+      <li>
+        <strong>Path A（変換 → /）</strong>: <code>変換</code>（BASE #40 = <code>&amp;henkan_lt_adj</code>）を長押し → ADJ アクティブ → 続けて <code>/</code>（ADJ #38 = <code>&amp;to_nav_sft_ent NAV 0</code>）を長押し → NAV も合流 → conditional_layers が発火して ADJ_NAV 有効化。<br />
+        短く <code>変換</code>+<code>/</code> をタップした場合は <code>LShift+Enter</code> が送出される（QMK ADJ #42 と同じ動作）。
+      </li>
+      <li>
+        <strong>Path B（/ → 変換）</strong>: <code>/</code>（BASE #38）を長押し → NAV アクティブ → 続けて <code>変換</code>（NAV #40 = <code>&amp;adj_nav_ctl_ent ADJ 0</code>）を長押し → ADJ も合流 → conditional_layers が発火して ADJ_NAV 有効化。<br />
+        短く <code>/</code>+<code>変換</code> をタップした場合は <code>LCtrl+Enter</code> が送出される（QMK NAV #44 と同じ動作）。
+      </li>
+      <li>
+        <strong>設計補足</strong>: QMK 側（olsk60）は両 Path とも <code>layer_on(L_ADJ_NAV)</code> を直接呼び出して ADJ_NAV を活性化する直接活性化方式。ZMK 側で同等の <code>&amp;mo ADJ_NAV</code> を使う直接活性化を試みると、<code>conditional_layers</code> が「<code>if-layers</code> 条件（NAV AND ADJ）を満たしていない」と判断して ADJ_NAV を即時 OFF にしてしまうため安定しない。そのため ZMK では両 Path とも <code>conditional_layers</code> 経由の間接活性化に統一している。
+      </li>
+    </ul>
+
+    <h2>ポインティング（グライドポイント）</h2>
+    <ul>
+      <li>レイヤー 2（<code>SYM</code>）のみ <code>zip_xy_to_scroll_mapper</code> によりスクロール化される（<code>nav</code> 中はカーソル移動のまま）</li>
+      <li>レイヤー 9（<code>NAV_FAST</code>）でホイールキーの移動量が増大（<code>&amp;msc MOVE_X/Y</code>）</li>
+    </ul>
+
+    <h2>QMK 側からの移植で省略した機能</h2>
+    <ul>
+      <li>音機能全般（<code>ZELDA_PUZZLE_SOLVED_KEY</code> など）— ZMK では音再生未対応のため</li>
+      <li><code>MB3_SCROLL_KEY</code>（QMK L0 #54）— ZMK に対応スロットなし。SYM 層中のグライドポイント自動スクロールで部分的に代替</li>
+      <li><code>SCROLL_BOOST_KEY</code> のトラックポイントスクロール倍率部分 — QMK olsk60 側はトラックポイント搭載だが、ZMK toucan はグライドポイント（タッチパッド）搭載でそもそも該当しない。ホイールキー加速だけ NAV_FAST(L9) として残存</li>
+      <li>QMK L8 <code>L_DANGER</code>（PS/2 マウス速度プロファイル・EEPROM クリア・音声トグル）— L0〜L7 のみ移植対象のため未移植</li>
+      <li>エンコーダマップ — toucan にエンコーダなし</li>
+    </ul>
+
+    <h2>AIへキーマップ修正を指示する方法</h2>
+    <p>次の方法のいずれかで指定することが推奨です。</p>
+    <ul>
+      <li><strong>スロット番号</strong> … 画面上の <code>#37</code> のように出ている番号で「レイヤー 2 のスロット 37 を <code>&amp;kp ENTER</code> に」と書く（<code>toucan.keymap</code> の <code>bindings</code> 配列の並びと一致）。</li>
+      <li><strong>レイヤー + 見た目位置</strong> … 「L1 を表示した状態で、Q の位置」「親指列の一番左」など。</li>
+      <li><strong>いまのラベル</strong> … 「<code>WH↑</code> になっているキーを ○○ に」。</li>
+    </ul>
+    <p>複数キーは箇条書きにすると安全です。新規マクロやカスタム behavior が必要なら、その旨も書いてください。</p>
+
+    <h2>メンテナンス（HTML と .keymap を同期する手順）</h2>
+    <p>本 HTML の <code>LAYERS[].bindings</code> は、<code>config/toucan.keymap</code> の各レイヤーの <code>bindings = &lt;...&gt;</code> の<strong>並び順そのまま</strong>を文字列化したものです。<code>toucan.keymap</code> を変更したら、次の手順で本 HTML を更新してください。</p>
+    <ul>
+      <li>変更したレイヤーの <code>bindings</code> を取り出し、空白を整えて 42 要素の文字列配列にする</li>
+      <li>本 HTML の対応する <code>LAYERS[]</code> エントリの <code>bindings</code> を上書きする</li>
+      <li>新しい behavior / マクロを増やしたときは、<code>ZMK_BEHAVIOR_LABELS</code>（完全一致辞書）または <code>ZMK_PATTERNS</code>（正規表現）を必要に応じて追記する</li>
+      <li>ブラウザでこの HTML を開き、各レイヤータブを切り替えて表示崩れがないか確認する</li>
+    </ul>
+    <p>JIS/US の切替は表示のみで、ファームウェアの挙動には影響しません。</p>
+  </details>
+
+  <footer class="tech">
+    <strong>L0〜L9</strong> … <code>&amp;mo</code>/<code>&amp;lt</code>/<code>&amp;lt_hold_tap</code> で参照するレイヤー番号。<br />
+    <strong>M1/M2/M3</strong> … <code>&amp;mkp MB1/MB2/MB3</code>（マウス左/中/右クリック）。<strong>WH↑/↓/←/→</strong> … <code>&amp;msc SCRL_*</code>。<br />
+    ソース: <code>config/toucan.keymap</code> / <code>config/toucan.json</code> / <code>boards/shields/toucan/toucan.dtsi</code>
+  </footer>
+
+  <script>
+(function () {
+  "use strict";
+
+  /* =====================================================================
+   * 1. 物理配置データ
+   *    `config/toucan.json` の "layout" 配列をそのまま転記。
+   *    x/y は KLE 単位（1u = 1キー）、r は回転角、rx/ry は回転中心。
+   *    HTML 上は 42 要素の bindings 配列のインデックスと 1:1 で対応する。
+   * ===================================================================== */
+  const PHYSICAL_LAYOUT = [
+    // 1段目（row 0）: スロット #0〜#11
+    { x: 0,    y: 0.37 }, { x: 1,    y: 0.37 }, { x: 2,    y: 0.12 },
+    { x: 3,    y: 0    }, { x: 4,    y: 0.12 }, { x: 5,    y: 0.24 },
+    { x: 8,    y: 0.24 }, { x: 9,    y: 0.12 }, { x: 10,   y: 0    },
+    { x: 11,   y: 0.12 }, { x: 12,   y: 0.37 }, { x: 13,   y: 0.37 },
+
+    // 2段目（row 1）: スロット #12〜#23
+    { x: 0,    y: 1.37 }, { x: 1,    y: 1.37 }, { x: 2,    y: 1.12 },
+    { x: 3,    y: 1    }, { x: 4,    y: 1.12 }, { x: 5,    y: 1.24 },
+    { x: 8,    y: 1.24 }, { x: 9,    y: 1.12 }, { x: 10,   y: 1    },
+    { x: 11,   y: 1.12 }, { x: 12,   y: 1.37 }, { x: 13,   y: 1.37 },
+
+    // 3段目（row 2）: スロット #24〜#35
+    { x: 0,    y: 2.37 }, { x: 1,    y: 2.37 }, { x: 2,    y: 2.12 },
+    { x: 3,    y: 2    }, { x: 4,    y: 2.12 }, { x: 5,    y: 2.24 },
+    { x: 8,    y: 2.24 }, { x: 9,    y: 2.12 }, { x: 10,   y: 2    },
+    { x: 11,   y: 2.12 }, { x: 12,   y: 2.37 }, { x: 13,   y: 2.37 },
+
+    // 4段目（row 3, 親指列）: スロット #36〜#41
+    { x: 3.5,  y: 3.12 },
+    { x: 4.5,  y: 3.12, r: 12,  rx: 4.5,  ry: 4.12 },
+    { x: 5.48, y: 3.28, r: 24,  rx: 5.48, ry: 4.33 },
+    { x: 7.52, y: 3.28, r: -24, rx: 8.52, ry: 4.33 },
+    { x: 8.5,  y: 3.12, r: -12, rx: 9.5,  ry: 4.12 },
+    { x: 9.5,  y: 3.12 },
+  ];
+
+  /* =====================================================================
+   * 2. レイヤーデータ
+   *    `config/toucan.keymap` の各レイヤーの bindings をそのまま転記。
+   *    並び順と要素数（42）が `bindings = <...>` と一致していることが重要。
+   * ===================================================================== */
+  const LAYERS = [
+    {
+      id: 0,
+      name: "Layer 0 — BASE",
+      note: "通常入力レイヤー。親指列でレイヤーホールド・mod-tap・mod-morph を行う。",
+      bindings: [
+        // row 0
+        "&kp LCTRL", "&kp Q", "&kp W", "&kp E", "&kp R", "&kp T",
+        "&kp Y",     "&kp U", "&kp I", "&kp O", "&kp P", "&kp LEFT_SHIFT",
+        // row 1
+        "&kp ESC", "&kp F", "&kp S", "&kp D", "&kp A", "&kp G",
+        "&kp H",   "&kp N", "&kp M", "&kp K", "&kp MINUS", "&lt_hold_tap 5 RIGHT_BRACKET",
+        // row 2
+        "&kp LGUI", "&kp Z", "&kp X", "&kp C", "&kp V", "&kp B",
+        "&kp J",    "&kp L", "&kp COMMA", "&kp DOT", "&lt_hold_tap 7 QUESTION", "&lt_hold_tap 6 BACKSLASH",
+        // row 3 (thumb)
+        "&mt_hold_tap LEFT_ALT TAB",
+        "&mt_hold_tap LEFT_SHIFT LANGUAGE_2",
+        "&lt_hold_tap 1 SLASH",
+        "&lalt_space",
+        "&henkan_lt_adj",
+        "&none",
+      ],
+    },
+    {
+      id: 1,
+      name: "Layer 1 — NAV",
+      note: "ウィンドウ操作・マウスクリック・スクロール・F15〜F18・ScrollBoost・メディア。#39 は LAlt+Enter のマクロ版。#40 は短押しで LCtrl+Enter、長押しで ADJ を併走（conditional_layers で ADJ_NAV 入場。Path B）。",
+      bindings: [
+        "&trans",          "&kp LG(DOWN)", "&kp LG(LEFT)",  "&kp LS(LG(LEFT))", "&kp LG(RIGHT)",      "&kp LG(UP_ARROW)",
+        "&kp LC(LS(TAB))", "&kp LC(TAB)",  "&msc SCRL_UP",  "&macro_newtab_browser_back", "&kp LA(LS(PRINTSCREEN))", "&trans",
+        "&kp LC(LS(P))",   "&kp LC(H)",    "&kp LG(LS(S))", "&mkp LCLK",        "&mkp MCLK",          "&mkp RCLK",
+        "&kp LC(SLASH)",   "&msc SCRL_LEFT", "&msc SCRL_DOWN", "&msc SCRL_RIGHT", "&kp C_BRIGHTNESS_DEC", "&kp C_BRI_UP",
+        "&trans",          "&kp F15", "&kp F16", "&kp F17", "&kp F18", "&mo 9",
+        "&kp C_PLAY",      "&kp C_PREV", "&kp C_NEXT", "&kp C_MUTE", "&kp C_VOL_DN", "&kp C_VOL_UP",
+        // thumb
+        "&none", "&none", "&trans", "&macro_alt_enter", "&adj_nav_ctl_ent 3 0", "&none",
+      ],
+    },
+    {
+      id: 2,
+      name: "Layer 2 — SYM",
+      note: "記号・テンキー・括弧マクロ。本レイヤー中はグライドポイントがスクロール化される。",
+      bindings: [
+        "&trans", "&kp KP_NUMBER_0",   "&kp KP_NUMBER_1", "&kp KP_NUMBER_2", "&kp KP_NUMBER_3", "&macro_parentheses",
+        "&kp LS(LEFT_BRACKET)", "&kp LS(N7)", "&kp LS(N2)", "&kp LS(N1)", "&kp LS(N4)", "&trans",
+        "&kp F5", "&kp LS(SEMICOLON)", "&kp KP_NUMBER_4", "&kp KP_NUMBER_5", "&kp KP_NUMBER_6", "&macro_square_brackets",
+        "&kp LS(INTERNATIONAL_1)", "&kp SQT", "&kp SEMICOLON", "&kp LEFT_BRACKET", "&kp LS(SQT)", "&kp LS(N8)",
+        "&trans", "&kp EQUAL", "&kp KP_NUMBER_7", "&kp KP_NUMBER_8", "&kp KP_NUMBER_9", "&macro_curly_brackets",
+        "&kp LS(EQUAL)", "&kp LS(N3)", "&kp LS(N6)", "&kp LS(N5)", "&kp LS(INTERNATIONAL_3)", "&kp LS(N9)",
+        // thumb
+        "&kp LS(TAB)", "&kp F13", "&kp INTERNATIONAL_1", "&trans", "&none", "&none",
+      ],
+    },
+    {
+      id: 3,
+      name: "Layer 3 — ADJ",
+      note: "カーソル移動・編集・F キー。#6/#7 は Windows の Alt 単独タップ誤判定を避けるためマクロ化。#38 は短押しで LShift+Enter、長押しで NAV を併走（conditional_layers で ADJ_NAV 入場。Path A）。",
+      bindings: [
+        "&trans",  "&kp LS(F10)", "&kp LC(W)", "&kp LC(E)",   "&kp LC(R)", "&kp LC(T)",
+        "&macro_alt_left", "&macro_alt_right", "&kp UP_ARROW", "&kp BACKSPACE", "&kp DELETE", "&trans",
+        "&kp F6",  "&kp LC(F)",   "&kp LC(S)", "&kp LC(D)",   "&kp LC(A)", "&kp LC(G)",
+        "&kp HOME", "&kp LEFT",   "&kp DOWN",  "&kp RIGHT",   "&kp F10",   "&kp F7",
+        "&kp F12", "&kp LC(Z)",   "&kp LC(X)", "&kp LC(C)",   "&kp LC(V)", "&kp LC(B)",
+        "&kp END",  "&kp PG_UP",  "&kp PG_DN", "&kp F4",      "&kp F11",   "&kp F2",
+        // thumb
+        "&kp LEFT_ALT", "&mt_hold_tap LEFT_SHIFT ENTER", "&to_nav_sft_ent 1 0", "&kp ENTER", "&trans", "&none",
+      ],
+    },
+    {
+      id: 4,
+      name: "Layer 4 — ADJ_NAV",
+      note: "Ctrl 系拡張ショートカット。NAV(1)+ADJ(3) 同時で自動有効（conditional_layers）。Path A（変換 → /）／ Path B（/ → 変換）の両経路から入場可能。",
+      bindings: [
+        "&trans",              "&kp F19", "&kp F20", "&kp F21",          "&kp F22",                "&kp F23",
+        "&kp LC(Y)",           "&kp LC(U)", "&kp LC(I)", "&kp LC(O)",    "&kp LC(P)",              "&trans",
+        "&kp LC(LS(ESCAPE))",  "&kp F24", "&kp RA(SPACE)", "&macro_adj_lclick", "&macro_adj_sft_lclick", "&macro_adj_rclick",
+        "&kp LC(H)",           "&kp LC(N)", "&kp LC(M)", "&kp LC(K)",    "&kp LC(MINUS)",          "&kp LC(RIGHT_BRACKET)",
+        "&kp LC(LEFT_GUI)",    "&kp F1", "&kp F3", "&kp F8",             "&kp F9",                 "&kp KP_NUMLOCK",
+        "&kp LC(J)",           "&kp LC(L)", "&kp LC(COMMA)", "&kp LC(DOT)", "&kp LC(QUESTION)",   "&kp LC(BACKSLASH)",
+        // thumb
+        "&none", "&none", "&none", "&none", "&none", "&none",
+      ],
+    },
+    {
+      id: 5,
+      name: "Layer 5 — CTRL_NUM",
+      note: "Ctrl+数字ショートカット（タブ切替などに使われやすい）。BASE #23 を長押しで発火。",
+      bindings: [
+        "&none", "&kp LC(N0)", "&kp LC(N1)", "&kp LC(N2)", "&kp LC(N3)", "&none",
+        "&none", "&none",      "&none",      "&none",      "&none",      "&none",
+        "&none", "&none",      "&kp LC(N4)", "&kp LC(N5)", "&kp LC(N6)", "&none",
+        "&none", "&none",      "&none",      "&none",      "&none",      "&none",
+        "&none", "&none",      "&kp LC(N7)", "&kp LC(N8)", "&kp LC(N9)", "&none",
+        "&none", "&none",      "&none",      "&none",      "&none",      "&none",
+        // thumb
+        "&none", "&none", "&none", "&none", "&none", "&none",
+      ],
+    },
+    {
+      id: 6,
+      name: "Layer 6 — GUI_NUM",
+      note: "Gui(Win/Cmd)+数字ショートカット（Windows のタスクバー番号起動など）。BASE #35 を長押しで発火。",
+      bindings: [
+        "&none", "&kp LG(N0)", "&kp LG(N1)", "&kp LG(N2)", "&kp LG(N3)", "&none",
+        "&none", "&none",      "&none",      "&none",      "&none",      "&none",
+        "&none", "&none",      "&kp LG(N4)", "&kp LG(N5)", "&kp LG(N6)", "&none",
+        "&none", "&none",      "&none",      "&none",      "&none",      "&none",
+        "&none", "&none",      "&kp LG(N7)", "&kp LG(N8)", "&kp LG(N9)", "&none",
+        "&none", "&none",      "&none",      "&none",      "&none",      "&none",
+        // thumb
+        "&none", "&none", "&none", "&none", "&none", "&none",
+      ],
+    },
+    {
+      id: 7,
+      name: "Layer 7 — ALT_NUM",
+      note: "Alt+数字ショートカット。BASE #34 を長押しで発火。",
+      bindings: [
+        "&none", "&kp LA(N0)", "&kp LA(N1)", "&kp LA(N2)", "&kp LA(N3)", "&none",
+        "&none", "&none",      "&none",      "&none",      "&none",      "&none",
+        "&none", "&none",      "&kp LA(N4)", "&kp LA(N5)", "&kp LA(N6)", "&none",
+        "&none", "&none",      "&none",      "&none",      "&none",      "&none",
+        "&none", "&none",      "&kp LA(N7)", "&kp LA(N8)", "&kp LA(N9)", "&none",
+        "&none", "&none",      "&none",      "&none",      "&none",      "&none",
+        // thumb
+        "&none", "&none", "&none", "&none", "&none", "&none",
+      ],
+    },
+    {
+      id: 8,
+      name: "Layer 8 — BOOT",
+      note: "Bluetooth ペアリング切替・スリープ・リセット・ブートローダ（誤操作注意）。コンボ #36+#37+#38 で発火。BT_SEL 0〜4 は右手 1 段目（Y/U/I/O/P の位置）。",
+      bindings: [
+        "&none",        "&none",        "&none",        "&none",        "&none",        "&studio_unlock",
+        "&bt BT_SEL 0", "&bt BT_SEL 1", "&bt BT_SEL 2", "&bt BT_SEL 3", "&bt BT_SEL 4", "&none",
+        "&soft_off",    "&none",        "&none",        "&none",        "&none",        "&sys_reset",
+        "&none",        "&none",        "&none",        "&none",        "&none",        "&none",
+        "&bt BT_CLR",   "&none",        "&none",        "&none",        "&none",        "&bootloader",
+        "&bootloader",  "&none",        "&none",        "&none",        "&none",        "&none",
+        // thumb
+        "&none", "&none", "&none", "&none", "&none", "&none",
+      ],
+    },
+    {
+      id: 9,
+      name: "Layer 9 — NAV_FAST",
+      note: "NAV 中に B 位置（&mo 9）を押下している間だけ有効。ホイールキー加速（QMK SCROLL_BOOST_KEY のホイール部分のみ近似）。",
+      bindings: [
+        "&none", "&none", "&none", "&none", "&none", "&none",
+        "&none", "&none", "&msc MOVE_Y(20)", "&none", "&none", "&none",
+        "&none", "&none", "&none", "&none", "&none", "&none",
+        "&none", "&msc MOVE_X(-20)", "&msc MOVE_Y(-20)", "&msc MOVE_X(20)", "&none", "&none",
+        "&none", "&none", "&none", "&none", "&none", "&trans",
+        "&none", "&none", "&none", "&none", "&none", "&none",
+        // thumb
+        "&none", "&none", "&trans", "&trans", "&none", "&none",
+      ],
+    },
+  ];
+
+  /* =====================================================================
+   * 3. ZMK バインディング → 表示ラベル変換
+   *    完全一致辞書（ZMK_BEHAVIOR_LABELS）と正規表現パターン（ZMK_PATTERNS）の併用。
+   *    `\n`（改行）で 2 行表記にすると、レンダリング時に上段=タップ・下段=ホールド扱い。
+   * ===================================================================== */
+
+  /* 完全一致辞書（最優先） */
+  const ZMK_BEHAVIOR_LABELS = {
+    "&trans": "▽",
+    "&none":  "·",
+    "&sys_reset":     "Reset",
+    "&bootloader":    "Boot",
+    "&studio_unlock": "Studio",
+    "&soft_off":      "Off",
+    "&bt BT_CLR":     "BT Clr",
+    "&mkp MB1":       "M1",
+    "&mkp MB2":       "M2",
+    "&mkp MB3":       "M3",
+    "&mkp LCLK":      "M1",
+    "&mkp MCLK":      "M3",
+    "&mkp RCLK":      "M2",
+    "&msc SCRL_UP":    "WH↑",
+    "&msc SCRL_DOWN":  "WH↓",
+    "&msc SCRL_LEFT":  "WH←",
+    "&msc SCRL_RIGHT": "WH→",
+    /* プロジェクト固有マクロ（意味的ラベル） */
+    "&macro_parentheses":         "( )",
+    "&macro_square_brackets":     "[ ]",
+    "&macro_curly_brackets":      "{ }",
+    "&macro_newtab_browser_back": "NewTabBack",
+    "&macro_adj_lclick":          "Ctrl+M1",
+    "&macro_adj_sft_lclick":      "Shift+M1",
+    "&macro_adj_rclick":          "Shift+M2",
+    "&macro_alt_left":            "LAlt+←",
+    "&macro_alt_right":           "LAlt+→",
+    "&macro_alt_enter":           "LAlt+Enter",
+    "&macro_ctl_enter":           "LCtrl+Enter",
+    "&macro_sft_enter":           "LShift+Enter",
+    /* mod-morph: 通常は SYM(2) ホールド付き Space。LAlt 押下中は Alt+Tab に変身 */
+    "&lalt_space": "Space\nL2",
+    /* mod-morph: 通常は ADJ(3) ホールド付き LANG1。LShift 中タップは F14（QMK HENKAN_LT_ADJ の近似） */
+    "&henkan_lt_adj": "かな\nL3",
+  };
+
+  /* キー（keycode）名の正規化マップ。ZMK の冗長名 → 短縮表示 */
+  const ZMK_KEY_ALIASES = {
+    LCTRL: "LCtrl",     LEFT_CONTROL: "LCtrl",
+    RCTRL: "RCtrl",     RIGHT_CONTROL: "RCtrl",
+    LSHIFT: "LShift",   LEFT_SHIFT: "LShift",
+    RSHIFT: "RShift",   RIGHT_SHIFT: "RShift",
+    LALT: "LAlt",       LEFT_ALT: "LAlt",
+    RALT: "RAlt",       RIGHT_ALT: "RAlt",
+    LGUI: "LGui",       LEFT_GUI: "LGui",
+    RGUI: "RGui",       RIGHT_GUI: "RGui",
+    LWIN: "LGui",       RWIN: "RGui",
+    ESCAPE: "Esc",      ESC: "Esc",
+    ENTER: "Enter",     RET: "Enter",     RETURN: "Enter",
+    BACKSPACE: "Bsp",   BSPC: "Bsp",
+    DELETE: "Del",      DEL: "Del",
+    SPACE: "Space",     SPC: "Space",
+    TAB: "Tab",
+    HOME: "Home",       END: "End",
+    PG_UP: "PgUp",      PAGE_UP: "PgUp",   PGUP: "PgUp",
+    PG_DN: "PgDn",      PAGE_DOWN: "PgDn", PGDN: "PgDn",
+    UP_ARROW: "↑",      UP: "↑",
+    DOWN_ARROW: "↓",    DOWN: "↓",
+    LEFT_ARROW: "←",    LEFT: "←",
+    RIGHT_ARROW: "→",   RIGHT: "→",
+    LEFT_BRACKET: "[",  LBKT: "[",
+    RIGHT_BRACKET: "]", RBKT: "]",
+    SEMICOLON: ";",     SEMI: ";",
+    SINGLE_QUOTE: "'",  SQT: "'",  APOSTROPHE: "'",
+    DOUBLE_QUOTES: "\"",DQT: "\"",
+    BACKSLASH: "\\",    BSLH: "\\",
+    SLASH: "/",         FSLH: "/",
+    MINUS: "-",
+    EQUAL: "=",
+    COMMA: ",",
+    DOT: ".",           PERIOD: ".",
+    QUESTION: "?",      QMARK: "?",
+    GRAVE: "`",
+    PRINTSCREEN: "PScr", PSCRN: "PScr",
+    KP_NUMBER_0: "KP0", KP_NUMBER_1: "KP1", KP_NUMBER_2: "KP2",
+    KP_NUMBER_3: "KP3", KP_NUMBER_4: "KP4", KP_NUMBER_5: "KP5",
+    KP_NUMBER_6: "KP6", KP_NUMBER_7: "KP7", KP_NUMBER_8: "KP8",
+    KP_NUMBER_9: "KP9",
+    KP_N0: "KP0",       KP_N1: "KP1",       KP_N2: "KP2",
+    KP_N3: "KP3",       KP_N4: "KP4",       KP_N5: "KP5",
+    KP_N6: "KP6",       KP_N7: "KP7",       KP_N8: "KP8",
+    KP_N9: "KP9",
+    KP_NUMLOCK: "NumLock", KP_NLCK: "NumLock", CAPSLOCK: "Caps",
+    NUMBER_0: "0", N0: "0", NUMBER_1: "1", N1: "1",
+    NUMBER_2: "2", N2: "2", NUMBER_3: "3", N3: "3",
+    NUMBER_4: "4", N4: "4", NUMBER_5: "5", N5: "5",
+    NUMBER_6: "6", N6: "6", NUMBER_7: "7", N7: "7",
+    NUMBER_8: "8", N8: "8", NUMBER_9: "9", N9: "9",
+    INTERNATIONAL_1: "INT1", INT1: "INT1",
+    INTERNATIONAL_3: "INT3", INT3: "INT3",
+    LANGUAGE_1: "かな",  LANG1: "かな",     /* 変換相当 */
+    LANGUAGE_2: "英数",  LANG2: "英数",     /* 無変換相当 */
+    C_PLAY: "Play",     C_PLAY_PAUSE: "Play",
+    C_PREV: "Prev",     C_NEXT: "Next",
+    C_MUTE: "Mute",
+    C_VOL_DN: "Vol-",   C_VOLUME_DOWN: "Vol-",
+    C_VOL_UP: "Vol+",   C_VOLUME_UP: "Vol+",
+    C_BRI_DN: "Bright-", C_BRIGHTNESS_DEC: "Bright-",
+    C_BRI_UP: "Bright+", C_BRIGHTNESS_INC: "Bright+",
+  };
+
+  /* MOD トークン略称（hold-tap の MOD 側用） */
+  const MOD_ALIASES = {
+    "LCTRL": "LCtrl", "LEFT_CONTROL": "LCtrl",
+    "RCTRL": "RCtrl", "RIGHT_CONTROL": "RCtrl",
+    "LSHIFT": "LShift", "LEFT_SHIFT": "LShift",
+    "RSHIFT": "RShift", "RIGHT_SHIFT": "RShift",
+    "LALT": "LAlt", "LEFT_ALT": "LAlt",
+    "RALT": "RAlt", "RIGHT_ALT": "RAlt",
+    "LGUI": "LGui", "LEFT_GUI": "LGui",
+    "RGUI": "RGui", "RIGHT_GUI": "RGui",
+  };
+
+  const MOD_WRAP_PREFIX = {
+    LS: "LShift", LC: "LCtrl", LA: "LAlt", LG: "LGui",
+    RS: "RShift", RC: "RCtrl", RA: "RAlt", RG: "RGui",
+  };
+
+  /**
+   * キー名を表示用に正規化する。`LS(...)` などの修飾ラッパーは再帰展開する。
+   * 例: "LC(LS(TAB))" → "LCtrl+LShift+Tab" / "LEFT_SHIFT" → "LShift"
+   */
+  function normalizeKey(name) {
+    const wrap = name.match(/^(LS|LC|LA|LG|RS|RC|RA|RG)\((.+)\)$/);
+    if (wrap) {
+      return MOD_WRAP_PREFIX[wrap[1]] + "+" + normalizeKey(wrap[2]);
+    }
+    if (ZMK_KEY_ALIASES[name] !== undefined) return ZMK_KEY_ALIASES[name];
+    return name;
+  }
+
+  /** hold-tap の MOD 側を表示用に展開する。修飾ラッパーも入れ子で対応 */
+  function normalizeMod(mod) {
+    const wrap = mod.match(/^(LS|LC|LA|LG|RS|RC|RA|RG)\((.+)\)$/);
+    if (wrap) {
+      return MOD_WRAP_PREFIX[wrap[1]] + "+" + normalizeMod(wrap[2]);
+    }
+    return MOD_ALIASES[mod] || mod;
+  }
+
+  /* 正規表現パターン（辞書で当たらないものをここで処理） */
+  const ZMK_PATTERNS = [
+    // &kp <key> ／ ネストした修飾 LC(LS(X)) などにも対応
+    {
+      re: /^&kp\s+(\S.*\S|\S)$/,
+      fmt: (m) => normalizeKey(m[1]),
+    },
+    // レイヤー操作
+    { re: /^&mo\s+(\d+)$/,   fmt: (m) => "MO\nL" + m[1] },
+    { re: /^&to\s+(\d+)$/,   fmt: (m) => "TO\nL" + m[1] },
+    { re: /^&tog\s+(\d+)$/,  fmt: (m) => "TOG\nL" + m[1] },
+    { re: /^&sl\s+(\d+)$/,   fmt: (m) => "SL\nL" + m[1] },
+
+    // Bluetooth
+    { re: /^&bt\s+BT_SEL\s+(\d+)$/, fmt: (m) => "BT" + m[1] },
+    { re: /^&bt\s+BT_NXT$/,         fmt: () => "BT Nxt" },
+    { re: /^&bt\s+BT_PRV$/,         fmt: () => "BT Prv" },
+
+    // タップ/ホールド（標準 &lt / &mt）。上段=タップ、下段=ホールド
+    {
+      re: /^&lt\s+(\d+)\s+(\S+)$/,
+      fmt: (m) => normalizeKey(m[2]) + "\nL" + m[1],
+    },
+    {
+      re: /^&mt\s+(\S+)\s+(\S+)$/,
+      fmt: (m) => normalizeKey(m[2]) + "\n" + normalizeMod(m[1]),
+    },
+
+    // プロジェクト固有のカスタム hold-tap（`mt_hold_tap` / `lt_hold_tap`）
+    {
+      re: /^&lt_hold_tap\s+(\d+)\s+(\S+)$/,
+      fmt: (m) => normalizeKey(m[2]) + "\nL" + m[1],
+    },
+    {
+      re: /^&mt_hold_tap\s+(\S+)\s+(\S+)$/,
+      fmt: (m) => normalizeKey(m[2]) + "\n" + normalizeMod(m[1]),
+    },
+    /* QMK ADJ_NAV_CTRL_ENT 相当: タップで Ctrl+Enter、ホールドで指定レイヤー momentary。
+       第 2 引数はマクロ tap 側で未使用のダミー（ZMK hold-tap が #binding-cells = <2> 固定のため必要） */
+    {
+      re: /^&adj_nav_ctl_ent\s+(\d+)\s+\d+$/,
+      fmt: (m) => "LCtrl+Enter\nL" + m[1],
+    },
+    /* ADJ #38 用: タップで LShift+Enter、ホールドで指定レイヤー momentary
+       （ADJ 中の長押しで NAV を合流させて conditional_layers 経由で ADJ_NAV 入場可）。
+       第 2 引数は同様にダミー */
+    {
+      re: /^&to_nav_sft_ent\s+(\d+)\s+\d+$/,
+      fmt: (m) => "LShift+Enter\nL" + m[1],
+    },
+
+    // ポインタ移動・スクロール（引数付き）
+    {
+      re: /^&msc\s+MOVE_X\((-?\d+)\)$/,
+      fmt: (m) => "Move X" + (parseInt(m[1], 10) >= 0 ? "+" : "") + m[1],
+    },
+    {
+      re: /^&msc\s+MOVE_Y\((-?\d+)\)$/,
+      fmt: (m) => "Move Y" + (parseInt(m[1], 10) >= 0 ? "+" : "") + m[1],
+    },
+    {
+      re: /^&msc\s+SCRL_X\((-?\d+)\)$/,
+      fmt: (m) => "WH X" + (parseInt(m[1], 10) >= 0 ? "+" : "") + m[1],
+    },
+    {
+      re: /^&msc\s+SCRL_Y\((-?\d+)\)$/,
+      fmt: (m) => "WH Y" + (parseInt(m[1], 10) >= 0 ? "+" : "") + m[1],
+    },
+  ];
+
+  /** ZMK の binding 文字列 1 つを表示ラベルに変換する */
+  function zmkBindingToLabel(raw) {
+    /* 余分な空白を 1 個に詰める（.keymap の整形ゆらぎを吸収） */
+    const norm = raw.replace(/\s+/g, " ").trim();
+    if (ZMK_BEHAVIOR_LABELS[norm] !== undefined) return ZMK_BEHAVIOR_LABELS[norm];
+    for (const p of ZMK_PATTERNS) {
+      const m = norm.match(p.re);
+      if (m) return p.fmt(m);
+    }
+    /* 未知の binding は原文をそのまま表示（バグ発見の手がかり） */
+    return norm;
+  }
+
+  /* =====================================================================
+   * 4. JIS / US 表示の切替（表示のみ・ファームと無関係）
+   *    QMK 版と同じ思想で、修飾なし記号や LShift+数字を JIS 配列の見かけに寄せる。
+   * ===================================================================== */
+
+  /* 単独トークンの JIS 置換（左右修飾は変えずに最後のトークンだけ置換するときにも使う） */
+  const JIS_KEY_TOKEN_MAP = {
+    "\\": "]",
+    "]": "[",
+    "[": "@",
+    "'": ":",
+    "=": "^",
+    "INT1": "\\",
+    "INT3": "￥",
+  };
+
+  /* LShift + 記号/数字 を「結果1文字」に短縮（JIS 配列） */
+  const JIS_SHIFT_RESULT_MAP = {
+    "1": "!", "2": "\"", "3": "#", "4": "$", "5": "%",
+    "6": "&", "7": "'",  "8": "(", "9": ")", "0": "",
+    "-": "=", "=": "~",  "[": "`", "]": "{", "\\": "|",
+    ";": "+", "'": "*",  ",": "<", ".": ">", "/": "?",
+    "INT1": "_", "INT3": "|",
+  };
+
+  /* LShift + 記号/数字 を「結果1文字」に短縮（US 配列） */
+  const US_SHIFT_RESULT_MAP = {
+    "1": "!", "2": "@", "3": "#", "4": "$", "5": "%",
+    "6": "^", "7": "&", "8": "*", "9": "(", "0": ")",
+    "-": "_", "=": "+", "[": "{", "]": "}", "\\": "|",
+    ";": ":", "'": "\"", ",": "<", ".": ">", "/": "?",
+  };
+
+  function toUsLabel(label) {
+    return label.split("\n").map((part) => {
+      const compact = part.replace(/\s*\+\s*/g, "+");
+      const sh = compact.match(/^LShift\+(.+)$/);
+      if (sh && US_SHIFT_RESULT_MAP[sh[1]] !== undefined) {
+        return US_SHIFT_RESULT_MAP[sh[1]];
+      }
+      return part;
+    }).join("\n");
+  }
+
+  function toJisLabel(label) {
+    return label.split("\n").map((part) => {
+      const compact = part.replace(/\s*\+\s*/g, "+");
+      /* 単独キーの JIS 置換（修飾なし） */
+      if (!compact.includes("+") && JIS_KEY_TOKEN_MAP[compact] !== undefined) {
+        return JIS_KEY_TOKEN_MAP[compact];
+      }
+      /* LShift+X → 結果1文字（JIS） */
+      const sh = compact.match(/^LShift\+(.+)$/);
+      if (sh && JIS_SHIFT_RESULT_MAP[sh[1]] !== undefined) {
+        return JIS_SHIFT_RESULT_MAP[sh[1]];
+      }
+      /* 修飾あり: 末尾のキーだけ JIS に寄せる（修飾は維持） */
+      if (compact.includes("+")) {
+        const tokens = compact.split("+");
+        const last = tokens[tokens.length - 1];
+        if (JIS_KEY_TOKEN_MAP[last] !== undefined) {
+          tokens[tokens.length - 1] = JIS_KEY_TOKEN_MAP[last];
+          return tokens.join("+");
+        }
+      }
+      return part;
+    }).join("\n");
+  }
+
+  /* =====================================================================
+   * 5. レンダリング
+   * ===================================================================== */
+
+  const kb = document.getElementById("kb");
+  const kbWrap = document.getElementById("kb-wrap");
+  const tabs = document.getElementById("layer-tabs");
+  const desc = document.getElementById("layer-desc");
+  const note = document.getElementById("layer-note");
+  const toggleSlots = document.getElementById("toggle-slots");
+  const toggleCodes = document.getElementById("toggle-codes");
+  const legendUs = document.getElementById("legend-us");
+  const legendJis = document.getElementById("legend-jis");
+  const viewIntegrated = document.getElementById("view-integrated");
+  const viewSingle = document.getElementById("view-single");
+
+  const LEGEND_STORAGE_KEY = "toucan_keymap_legend_mode";
+  let currentLayerIndex = 0;
+
+  /* 表示モード切り替え用の定数
+       VIEW_MODE_INTEGRATED: L0〜L4 を 1 セルに同時表示する一覧モード
+       VIEW_MODE_SINGLE:     現状どおりのレイヤー単体表示モード
+     INTEGRATED_LAYER_IDS は一覧モードで参照する 5 レイヤー（QMK の慣例に合わせ
+     ている。日常使用頻度の高い BASE/NAV/SYM/ADJ/ADJ_NAV を選定） */
+  const VIEW_MODE_INTEGRATED = "integrated";
+  const VIEW_MODE_SINGLE = "single";
+  const INTEGRATED_LAYER_IDS = [0, 1, 2, 3, 4];
+  let currentViewMode = VIEW_MODE_SINGLE;
+
+  /* localStorage に保存された JIS/US 設定を復元（失敗しても致命的でない） */
+  try {
+    const saved = localStorage.getItem(LEGEND_STORAGE_KEY);
+    if (saved === "us") {
+      legendUs.checked = true;
+      legendJis.checked = false;
+    } else if (saved === "jis") {
+      legendJis.checked = true;
+      legendUs.checked = false;
+    }
+  } catch (ignore) { /* localStorage が無効でも続行 */ }
+
+  function getLegendMode() {
+    return legendJis.checked ? "jis" : "us";
+  }
+
+  /** HTML 注入時の XSS 防止（textContent 経由で安全にエスケープ） */
+  function esc(s) {
+    const d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  /** 上段=タップ・下段=ホールド の 2 行表記かどうかを判定（色分け用） */
+  function isDualTapHold(label) {
+    const parts = label.split("\n");
+    if (parts.length !== 2) return false;
+    return /^(L[0-9]+|LCtrl|LShift|LAlt|LGui|RCtrl|RShift|RAlt|RGui|LShift\+LAlt|MO|TO|TOG|SL)$/.test(parts[1].trim());
+  }
+
+  /** ラベルからキーの色クラスを決める */
+  function keyClass(rawBinding, label) {
+    if (label === "▽") return "key trns";
+    if (label === "·") return "key no";
+    if (isDualTapHold(label)) return "key dual";
+
+    /* システム・ブートローダ系（誤操作注意の赤系） */
+    if (/^&(sys_reset|bootloader|soft_off|studio_unlock)$/.test(rawBinding)) return "key boot";
+    if (rawBinding === "&bt BT_CLR") return "key boot";
+
+    /* Bluetooth（紫系） */
+    if (/^&bt\s/.test(rawBinding)) return "key bt";
+
+    /* マクロ（橙系） */
+    if (/^&macro_/.test(rawBinding)) return "key macro";
+
+    /* マウス・スクロール・メディアなど（ナビ色） */
+    if (/^&(mkp|msc)\s/.test(rawBinding)) return "key nav";
+    if (/^&kp\s+C_/.test(rawBinding)) return "key nav";
+    if (/^&kp\s+(UP_ARROW|DOWN_ARROW|LEFT_ARROW|RIGHT_ARROW|UP|DOWN|LEFT|RIGHT|HOME|END|PG_UP|PG_DN|PAGE_UP|PAGE_DOWN|BACKSPACE|DELETE|BSPC|DEL|TAB|PRINTSCREEN)\b/.test(rawBinding)) return "key nav";
+    if (/^&kp\s+F\d/.test(rawBinding)) return "key nav";
+    if (/^&kp\s+KP_/.test(rawBinding)) return "key nav";
+
+    /* 修飾あり（LCtrl+ / LShift+ など） */
+    if (label.includes("+") && /^(LCtrl|LShift|LAlt|LGui|RCtrl|RShift|RAlt|RGui)/.test(label)) return "key mod";
+
+    /* 修飾キー単独 */
+    if (/^(LCtrl|LShift|LAlt|LGui|RCtrl|RShift|RAlt|RGui)$/.test(label)) return "key mod";
+
+    return "key";
+  }
+
+  /** 1 キー分の DOM を生成して返す */
+  function renderKey(slot, rawBinding, displayLabel) {
+    const pos = PHYSICAL_LAYOUT[slot];
+    if (!pos) return "";
+
+    const cls = keyClass(rawBinding, displayLabel);
+    const left = `calc(${pos.x} * var(--u))`;
+    const top  = `calc(${pos.y} * var(--u))`;
+
+    /* 回転（親指列の内側 4 つ）に対応。rx/ry は CSS の transform-origin に変換 */
+    let style = `left:${left};top:${top};`;
+    if (pos.r) {
+      const ox = `calc((${pos.rx} - ${pos.x}) * var(--u))`;
+      const oy = `calc((${pos.ry} - ${pos.y}) * var(--u))`;
+      style += `transform:rotate(${pos.r}deg);transform-origin:${ox} ${oy};`;
+    }
+
+    const parts = displayLabel.split("\n").map(esc).join("<br/>");
+    const badge = `<span class="slot-badge">#${slot}</span>`;
+    const codeBadge = `<span class="code-badge">${esc(rawBinding)}</span>`;
+    return `<div class="${cls}" style="${style}">${badge}${codeBadge}${parts}</div>`;
+  }
+
+  /** キーボード描画領域のサイズを物理配置の最大値から決める */
+  function computeBoardSize() {
+    let maxX = 0, maxY = 0;
+    PHYSICAL_LAYOUT.forEach((p) => {
+      if (p.x + 1 > maxX) maxX = p.x + 1;
+      if (p.y + 1 > maxY) maxY = p.y + 1;
+    });
+    return { w: maxX, h: maxY };
+  }
+
+  function applyLegend(label) {
+    /* ▽ / · や複数行は中身を加工せず通す。記号変換のみ JIS/US 切替で行う */
+    if (label === "▽" || label === "·") return label;
+    return getLegendMode() === "jis" ? toJisLabel(label) : toUsLabel(label);
+  }
+
+  /* =====================================================================
+   * 5b. 一覧表示モード用のラベル圧縮
+   * =====================================================================
+   * 1 セルに 5 レイヤーを詰めるため、修飾キーや長い識別子を短縮表記に置換する。
+   * QMK 側 HTML の同等処理と意味的に揃えてある（^=LCtrl, +=LShift, #=LGui, !=LAlt
+   * などの慣例）。 */
+  function shortIntegratedToken(token) {
+    const map = {
+      "LCtrl": "^",
+      "LShift": "+",
+      "LGui": "#",
+      "LAlt": "!",
+      "RAlt": "!",
+      "Enter": "Ent",
+      "Backspace": "Bsp",
+      "Delete": "Del",
+      "Space": "Spc",
+      "Tab": "Tab",
+      "BkTab": "BTab",
+      "Home": "Hm",
+      "End": "End",
+      "PgUp": "PgU",
+      "PgDn": "PgD",
+      "NumLock": "Num",
+      "ScrollBoost": "Scr+",
+      "Play/Pause": "Play",
+      "Prev": "Prv",
+      "Next": "Nxt",
+      "Mute": "Mut",
+      "Bright+": "Br+",
+      "Bright-": "Br-",
+      "Vol+": "V+",
+      "Vol-": "V-",
+      "KP0": "K0",
+      "KP1": "K1",
+      "KP2": "K2",
+      "KP3": "K3",
+      "KP4": "K4",
+      "KP5": "K5",
+      "KP6": "K6",
+      "KP7": "K7",
+      "KP8": "K8",
+      "KP9": "K9"
+    };
+    return map[token] || token;
+  }
+
+  /* 整合セル用にラベルを圧縮する。
+       - 改行 "\n" は "/" に変換（2 行表記を 1 行に）
+       - 修飾キーは記号にまとめて先頭連結（例: "LCtrl + Z" → "^Z"）
+     ▽ / · のような単一記号はそのまま通す。 */
+  function compactIntegratedLabel(label) {
+    if (label === "▽" || label === "·") return label;
+    const normalized = label.replace(/\s*\+\s*/g, "+").replace(/\n/g, "/");
+    const compactParts = normalized.split("/").map((part) => {
+      /* "Bright+" や "Vol+" は末尾の "+" が分割で消えるため、先に完全一致で短縮 */
+      const whole = shortIntegratedToken(part);
+      if (whole !== part) return whole;
+      const tokens = part.split("+").map(shortIntegratedToken);
+      /* 修飾キー（^ ! + #）は先頭連結、メインキーは "+" で連結 */
+      const mods = [];
+      const mains = [];
+      tokens.forEach((t) => {
+        if (t === "^" || t === "!" || t === "+" || t === "#") mods.push(t);
+        else mains.push(t);
+      });
+      return mods.join("") + mains.join("+");
+    });
+    return compactParts.join("/");
+  }
+
+  function renderLayer(layer) {
+    const sz = computeBoardSize();
+    kb.style.width  = `calc(${sz.w} * var(--u))`;
+    kb.style.height = `calc(${sz.h + 0.4} * var(--u))`;
+
+    const html = [];
+    for (let i = 0; i < PHYSICAL_LAYOUT.length; i++) {
+      const raw = layer.bindings[i] || "&none";
+      const baseLabel = zmkBindingToLabel(raw);
+      const label = applyLegend(baseLabel);
+      html.push(renderKey(i, raw, label));
+    }
+    kb.innerHTML = html.join("");
+    desc.textContent = layer.name;
+    note.textContent = layer.note || "";
+
+    /* キー数の整合性をコンソールで警告（メンテナンス時の確認用） */
+    if (layer.bindings.length !== PHYSICAL_LAYOUT.length) {
+      console.warn(
+        `L${layer.id} の bindings 要素数が物理スロット数と不一致: ` +
+        `bindings=${layer.bindings.length}, physical=${PHYSICAL_LAYOUT.length}`
+      );
+    }
+  }
+
+  /** id（数値）でレイヤーを引く（LAYERS 配列の index と一致しないケースに備える） */
+  function getLayerById(id) {
+    return LAYERS.find((l) => l.id === id);
+  }
+
+  /** 整合セル 1 つ分の HTML を生成。
+   *   labels[i] は INTEGRATED_LAYER_IDS[i] のレイヤーに対応する slot の表示ラベル。
+   *   位置クラス（.l0..l4）はレイヤー番号ではなく「セル内の表示位置」を表す:
+   *     .l0=中央 / .l1=右上 / .l2=右下 / .l3=左下 / .l4=左上
+   *   INTEGRATED_LAYER_IDS=[0,1,2,3,4] のとき:
+   *     labels[0]=L0 BASE  → .l0（中央）
+   *     labels[1]=L1 NAV   → .l4（左上）
+   *     labels[2]=L2 SYM   → .l1（右上）
+   *     labels[3]=L3 ADJ   → .l2（右下）
+   *     labels[4]=L4 ADJ_NAV → .l3（左下）
+   */
+  function integratedCellHtml(slot, layerLabels, activeLayerId) {
+    const labels = layerLabels.map((arr) => arr[slot] !== undefined ? arr[slot] : "·");
+    const activeClass = (layerId) => {
+      if (activeLayerId !== layerId) return "";
+      /* L0 BASE は常に中央のデフォルト位置なので強調しない（QMK 慣例） */
+      if (activeLayerId === 0) return "";
+      return " is-active-layer";
+    };
+    const ids = INTEGRATED_LAYER_IDS;
+    return [
+      '<div class="integrated-cell">',
+      `<span class="l4${activeClass(ids[1])}">${esc(labels[1])}</span>`,
+      `<span class="l1${activeClass(ids[2])}">${esc(labels[2])}</span>`,
+      `<span class="l0${activeClass(ids[0])}">${esc(labels[0])}</span>`,
+      `<span class="l3${activeClass(ids[4])}">${esc(labels[4])}</span>`,
+      `<span class="l2${activeClass(ids[3])}">${esc(labels[3])}</span>`,
+      "</div>"
+    ].join("");
+  }
+
+  /** 整合モード用の 1 キー DOM 生成。renderKey と異なり color クラス分けは
+   *  行わず、整合専用の `integrated-key` クラスのみで均一なグレー背景にする。 */
+  function renderKeyIntegrated(slot, layerLabels, activeLayerId) {
+    const pos = PHYSICAL_LAYOUT[slot];
+    if (!pos) return "";
+
+    const left = `calc(${pos.x} * var(--u))`;
+    const top  = `calc(${pos.y} * var(--u))`;
+    let style = `left:${left};top:${top};`;
+    if (pos.r) {
+      const ox = `calc((${pos.rx} - ${pos.x}) * var(--u))`;
+      const oy = `calc((${pos.ry} - ${pos.y}) * var(--u))`;
+      style += `transform:rotate(${pos.r}deg);transform-origin:${ox} ${oy};`;
+    }
+    return `<div class="key integrated-key" style="${style}">${integratedCellHtml(slot, layerLabels, activeLayerId)}</div>`;
+  }
+
+  /** 一覧表示モードの全キー描画。
+   *  5 レイヤー分のラベル配列を事前計算し、各スロットでセル HTML を生成する。 */
+  function renderIntegrated() {
+    const sz = computeBoardSize();
+    kb.style.width  = `calc(${sz.w} * var(--u))`;
+    kb.style.height = `calc(${sz.h + 0.4} * var(--u))`;
+
+    /* INTEGRATED_LAYER_IDS の各レイヤーについて、PHYSICAL_LAYOUT の全スロット分の
+       表示ラベルを 1 度だけ計算してキャッシュする */
+    const layerLabels = INTEGRATED_LAYER_IDS.map((layerId) => {
+      const layer = getLayerById(layerId);
+      if (!layer) return PHYSICAL_LAYOUT.map(() => "·");
+      return PHYSICAL_LAYOUT.map((_, slot) => {
+        const raw = layer.bindings[slot] || "&none";
+        const baseLabel = zmkBindingToLabel(raw);
+        return compactIntegratedLabel(applyLegend(baseLabel));
+      });
+    });
+
+    const activeLayerId = LAYERS[currentLayerIndex] ? LAYERS[currentLayerIndex].id : 0;
+
+    const html = [];
+    for (let i = 0; i < PHYSICAL_LAYOUT.length; i++) {
+      html.push(renderKeyIntegrated(i, layerLabels, activeLayerId));
+    }
+    kb.innerHTML = html.join("");
+    desc.textContent = "一覧表示（中央=L0 BASE / 左上=L1 NAV / 右上=L2 SYM / 右下=L3 ADJ / 左下=L4 ADJ_NAV）";
+    note.textContent = "L0〜L4 の 5 レイヤーを 1 セルに同時表示。レイヤータブの選択で対象レイヤーが赤強調（L0 を除く）。スロット番号・バインディング原文・キー色分類は非表示。";
+  }
+
+  function syncBadgeVisibility() {
+    /* 一覧モードでは badge を強制非表示にしてラベル領域を最大化する */
+    if (currentViewMode === VIEW_MODE_INTEGRATED) {
+      kbWrap.classList.add("kb-wrap--hide-slots");
+      kbWrap.classList.add("kb-wrap--hide-codes");
+      return;
+    }
+    kbWrap.classList.toggle("kb-wrap--hide-slots", !toggleSlots.checked);
+    kbWrap.classList.toggle("kb-wrap--hide-codes", !toggleCodes.checked);
+  }
+
+  function renderCurrent() {
+    if (currentViewMode === VIEW_MODE_INTEGRATED) {
+      renderIntegrated();
+    } else {
+      renderLayer(LAYERS[currentLayerIndex]);
+    }
+    syncBadgeVisibility();
+  }
+
+  /** ビューモード切替。view-modes トグルとレイヤータブの選択状態を更新し、
+   *  描画もし直す。currentLayerIndex は両モードで共有されるため、一覧モードで
+   *  L1 タブをクリックすれば L1 が赤強調された状態で一覧表示される。 */
+  function setViewMode(mode) {
+    currentViewMode = mode;
+    const integrated = mode === VIEW_MODE_INTEGRATED;
+    viewIntegrated.classList.toggle("active", integrated);
+    viewIntegrated.setAttribute("aria-selected", integrated ? "true" : "false");
+    viewSingle.classList.toggle("active", !integrated);
+    viewSingle.setAttribute("aria-selected", integrated ? "false" : "true");
+    kbWrap.classList.toggle("kb-wrap--integrated", integrated);
+    renderCurrent();
+  }
+
+  /* ---- レイヤータブの生成 ---- */
+  function layerShortName(layer) {
+    const sep = " — ";
+    const i = layer.name.indexOf(sep);
+    return i >= 0 ? layer.name.slice(i + sep.length).trim() : layer.name;
+  }
+
+  LAYERS.forEach((layer, idx) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "layer-tab";
+    b.classList.toggle("active", idx === 0);
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", idx === 0 ? "true" : "false");
+    b.setAttribute("aria-label", layer.name);
+
+    const numEl = document.createElement("span");
+    numEl.className = "layer-tab__num";
+    numEl.setAttribute("aria-hidden", "true");
+    numEl.textContent = "L" + layer.id;
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "layer-tab__name";
+    nameEl.textContent = layerShortName(layer);
+
+    b.appendChild(numEl);
+    b.appendChild(nameEl);
+    b.addEventListener("click", () => {
+      currentLayerIndex = idx;
+      tabs.querySelectorAll("button.layer-tab").forEach((x, j) => {
+        x.classList.toggle("active", j === idx);
+        x.setAttribute("aria-selected", j === idx ? "true" : "false");
+      });
+      renderCurrent();
+    });
+    tabs.appendChild(b);
+  });
+
+  /* ---- イベントバインド ---- */
+  toggleSlots.addEventListener("change", syncBadgeVisibility);
+  toggleCodes.addEventListener("change", syncBadgeVisibility);
+
+  [legendUs, legendJis].forEach((el) => {
+    el.addEventListener("change", () => {
+      try { localStorage.setItem(LEGEND_STORAGE_KEY, getLegendMode()); } catch (ignore) {}
+      renderCurrent();
+    });
+  });
+
+  viewIntegrated.addEventListener("click", () => setViewMode(VIEW_MODE_INTEGRATED));
+  viewSingle.addEventListener("click", () => setViewMode(VIEW_MODE_SINGLE));
+
+  /* 初期描画: デフォルトは一覧表示モード（QMK 側 HTML と同じ既定値） */
+  setViewMode(VIEW_MODE_INTEGRATED);
+})();
+  </script>
+</body>
+</html>
