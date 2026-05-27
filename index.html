@@ -384,7 +384,7 @@
     <table>
       <tr><th>L</th><th>名前</th><th>用途</th><th>入り方</th></tr>
       <tr><td>0</td><td><code>BASE</code></td><td>通常入力（ルートレイヤー）</td><td>初期状態</td></tr>
-      <tr><td>1</td><td><code>NAV</code></td><td>ナビゲーション・マウスクリック・スクロール・F15〜F18・ScrollBoost・メディア</td><td>左親指 <code>/</code>（<code>&amp;lt_hold_tap 1 SLASH</code>）長押し</td></tr>
+      <tr><td>1</td><td><code>NAV</code></td><td>ナビゲーション・マウスクリック・スクロール・F15〜F18・ScrollBoost・メディア。<strong>スクロールキー</strong>は <code>&amp;msc SCRL_*</code> をタップ即反応に調整済（下記「ポインティング（グライドポイント）」参照）</td><td>左親指 <code>/</code>（<code>&amp;lt_hold_tap 1 SLASH</code>）長押し</td></tr>
       <tr><td>2</td><td><code>SYM</code></td><td>記号・テンキー・括弧マクロ。本レイヤー中はグライドポイントが<strong>スクロール化</strong>される</td><td>右親指 Space（<code>&amp;lalt_space</code>）長押し</td></tr>
       <tr><td>3</td><td><code>ADJ</code></td><td>カーソル移動・編集・F キー</td><td>右親指 変換 / 英数（<code>&amp;henkan_lt_adj</code>）長押し</td></tr>
       <tr><td>4</td><td><code>ADJ_NAV</code></td><td>Ctrl 系拡張ショートカット・Shift+クリックなど</td><td>NAV と ADJ が同時アクティブになると <code>conditional_layers</code> が自動有効化。Path A／Path B の両方から到達可能（下記「ADJ_NAV 入場経路」参照）</td></tr>
@@ -451,8 +451,18 @@
     <h2>ポインティング（グライドポイント）</h2>
     <ul>
       <li>レイヤー 2（<code>SYM</code>）のみ <code>zip_xy_to_scroll_mapper</code> によりスクロール化される（<code>nav</code> 中はカーソル移動のまま）</li>
-      <li>レイヤー 9（<code>NAV_FAST</code>）でホイールキーの移動量が増大（<code>&amp;msc MOVE_X/Y</code>）</li>
+      <li>レイヤー 9（<code>NAV_FAST</code>）でホイールキーの移動量が増大（<code>&amp;msc MOVE_X/Y(±90)</code>。<code>ZMK_POINTING_DEFAULT_SCRL_VAL=30</code> の 3 倍）</li>
     </ul>
+
+    <h2>スクロール挙動チューニング（NAV のホイールキー）</h2>
+    <p>ZMK の <code>&amp;msc SCRL_*</code> は QMK の <code>KC_MS_WH_*</code> と<strong>内部モデルが異なる</strong>。QMK は押下時にホイール 1 ティックを即座に HID 送信する離散イベント型だが、ZMK は「仮想速度 × 経過時間」を蓄積して ±1 を超えた瞬間に 1 段の HID スクロールを送る積分型。既定パラメータのままだと「100ms 未満のタップではスクロールが 1 段も発火しない」現象が起きる。</p>
+    <p>本キーマップでは QMK olsk60 のスクロール体験に近づけるため、以下 2 点をチューニング済（<code>config/toucan.keymap</code> 冒頭参照）。</p>
+    <table>
+      <tr><th>項目</th><th>既定</th><th>本キーマップ</th><th>意図</th></tr>
+      <tr><td><code>ZMK_POINTING_DEFAULT_SCRL_VAL</code>（案A）</td><td>10</td><td><strong>30</strong></td><td>仮想速度を 3 倍に。初回スクロールティック発火までの時間が ~100ms → ~32〜48ms に短縮されてタップ即反応になる</td></tr>
+      <tr><td><code>&amp;msc { time-to-max-speed-ms / acceleration-exponent / delay-ms }</code>（案B）</td><td>300 / 0 / 0</td><td><strong>0 / 0 / 0</strong></td><td>立ち上がりの加速ランプを排除して、押下瞬間から最大速度に到達させる（将来 <code>acceleration-exponent</code> を 1 以上に変えたときの取りこぼし防止保険）</td></tr>
+    </table>
+    <p>体感が「速すぎる」場合は <code>ZMK_POINTING_DEFAULT_SCRL_VAL</code> を 20〜25 に下げる。「まだ遅い」なら 40〜50 に上げる。<strong>NAV_FAST の <code>MOVE_X/Y(±90)</code> は必ず <code>ZMK_POINTING_DEFAULT_SCRL_VAL</code> より大きく保つ</strong>（同値以下だと NAV_FAST のほうが遅くなる逆転現象が起きる）。</p>
 
     <h2>QMK 側からの移植で省略した機能</h2>
     <ul>
@@ -679,12 +689,12 @@
     {
       id: 9,
       name: "Layer 9 — NAV_FAST",
-      note: "NAV 中に B 位置（&mo 9）を押下している間だけ有効。ホイールキー加速（QMK SCROLL_BOOST_KEY のホイール部分のみ近似）。",
+      note: "NAV 中に B 位置（&mo 9）を押下している間だけ有効。ホイールキー加速（QMK SCROLL_BOOST_KEY のホイール部分のみ近似）。値 90 は ZMK_POINTING_DEFAULT_SCRL_VAL=30 の 3 倍（QMK SCROLL_BOOST_WHEEL_MAX_SPEED 24 / MOUSEKEY_WHEEL_MAX_SPEED 8 と同じブースト比率）。",
       bindings: [
         "&none", "&none", "&none", "&none", "&none", "&none",
-        "&none", "&none", "&msc MOVE_Y(20)", "&none", "&none", "&none",
+        "&none", "&none", "&msc MOVE_Y(90)", "&none", "&none", "&none",
         "&none", "&none", "&none", "&none", "&none", "&none",
-        "&none", "&msc MOVE_X(-20)", "&msc MOVE_Y(-20)", "&msc MOVE_X(20)", "&none", "&none",
+        "&none", "&msc MOVE_X(-90)", "&msc MOVE_Y(-90)", "&msc MOVE_X(90)", "&none", "&none",
         "&none", "&none", "&none", "&none", "&none", "&trans",
         "&none", "&none", "&none", "&none", "&none", "&none",
         // thumb
