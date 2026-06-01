@@ -674,10 +674,10 @@
     {
       id: 8,
       name: "Layer 8 — BOOT",
-      note: "Bluetooth ペアリング切替・スリープ・リセット・ブートローダ（誤操作注意）。コンボ #36+#37+#38 で発火。BT_SEL 0〜4 は右手 1 段目（Y/U/I/O/P の位置）。",
+      note: "Bluetooth ペアリング切替・スリープ・リセット・ブートローダ（誤操作注意）。コンボ #36+#37+#38 で発火。BT_SEL 0〜4 は両手 1 段目に左右対称配置: 左手 #4-#0（R/E/W/Q/LCtrl の位置、中央側 #4=0 → 外側 #0=4）／ 右手 #7-#11（U/I/O/P/LShift の位置、中央側 #7=0 → 外側 #11=4）。",
       bindings: [
-        "&none",        "&none",        "&none",        "&none",        "&none",        "&studio_unlock",
-        "&bt BT_SEL 0", "&bt BT_SEL 1", "&bt BT_SEL 2", "&bt BT_SEL 3", "&bt BT_SEL 4", "&none",
+        "&bt BT_SEL 4", "&bt BT_SEL 3", "&bt BT_SEL 2", "&bt BT_SEL 1", "&bt BT_SEL 0", "&studio_unlock",
+        "&none",        "&bt BT_SEL 0", "&bt BT_SEL 1", "&bt BT_SEL 2", "&bt BT_SEL 3", "&bt BT_SEL 4",
         "&soft_off",    "&none",        "&none",        "&none",        "&none",        "&sys_reset",
         "&none",        "&none",        "&none",        "&none",        "&none",        "&none",
         "&bt BT_CLR",   "&none",        "&none",        "&none",        "&none",        "&bootloader",
